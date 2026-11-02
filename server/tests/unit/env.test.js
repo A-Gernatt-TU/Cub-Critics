@@ -95,6 +95,66 @@ describe('loadConfig', () => {
     );
   });
 
+  describe('abuse protection and transport security (SC#1, SC#6)', () => {
+    const prod = {
+      DB_NAME: 'cub',
+      DB_USER: 'me',
+      NODE_ENV: 'production',
+      SESSION_SECRET: 'x'.repeat(40),
+    };
+
+    test('rate limits are on by default, except in tests', () => {
+      expect(loadConfig(dbEnv).rateLimitsEnabled).toBe(true);
+      expect(loadConfig({ NODE_ENV: 'test' }).rateLimitsEnabled).toBe(false);
+      expect(loadConfig({ ...dbEnv, RATE_LIMITS_ENABLED: 'false' }).rateLimitsEnabled).toBe(false);
+    });
+
+    test('production refuses to run with rate limits switched off', () => {
+      expect(() => loadConfig({ ...prod, RATE_LIMITS_ENABLED: 'false' })).toThrow(
+        /RATE_LIMITS_ENABLED must not be false in production/
+      );
+    });
+
+    test('validates the global limit', () => {
+      expect(
+        loadConfig({ ...dbEnv, RATE_LIMIT_GLOBAL_PER_MINUTE: '50' }).rateLimitGlobalPerMinute
+      ).toBe(50);
+      expect(loadConfig(dbEnv).rateLimitGlobalPerMinute).toBe(600);
+      for (const bad of ['0', '-5', 'many', '1.5', '999999']) {
+        expect(() => loadConfig({ ...dbEnv, RATE_LIMIT_GLOBAL_PER_MINUTE: bad })).toThrow(
+          /RATE_LIMIT_GLOBAL_PER_MINUTE/
+        );
+      }
+    });
+
+    test('HTTPS redirects default to on in production only', () => {
+      expect(loadConfig(prod).forceHttps).toBe(true);
+      expect(loadConfig(dbEnv).forceHttps).toBe(false);
+      expect(loadConfig({ ...prod, FORCE_HTTPS: 'false' }).forceHttps).toBe(false);
+    });
+
+    test('settings that would silently break login behind an HTTPS host are refused at startup', () => {
+      expect(() => loadConfig({ ...prod, TRUST_PROXY: '0' })).toThrow(
+        /FORCE_HTTPS=true needs TRUST_PROXY=1/
+      );
+      expect(() => loadConfig({ ...prod, TRUST_PROXY: '0', FORCE_HTTPS: 'false' })).toThrow(
+        /COOKIE_SECURE=true needs TRUST_PROXY=1/
+      );
+      // The same combinations are fine in development, where there is no proxy and no HTTPS.
+      expect(() => loadConfig({ ...dbEnv, FORCE_HTTPS: 'true', TRUST_PROXY: '0' })).not.toThrow();
+    });
+  });
+
+  test('image storage: local driver only, with an absolute upload folder', () => {
+    const c = loadConfig({ ...dbEnv, UPLOAD_DIR: './my-uploads' });
+    expect(c.storageDriver).toBe('local');
+    expect(require('node:path').isAbsolute(c.uploadDir)).toBe(true);
+    expect(c.uploadDir.endsWith('my-uploads')).toBe(true);
+    expect(() => loadConfig({ ...dbEnv, STORAGE_DRIVER: 's3' })).toThrow(
+      /STORAGE_DRIVER "s3" is not supported/
+    );
+  });
+
   test('validates BCRYPT_ROUNDS and defaults TOS_VERSION', () => {
     expect(() => loadConfig({ ...dbEnv, BCRYPT_ROUNDS: '3' })).toThrow(/BCRYPT_ROUNDS/);
     expect(() => loadConfig({ ...dbEnv, BCRYPT_ROUNDS: '16' })).toThrow(/BCRYPT_ROUNDS/);

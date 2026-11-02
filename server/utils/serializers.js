@@ -1,4 +1,6 @@
 'use strict';
+const storageService = require('../services/storageService');
+
 // Turns database rows into the JSON the frontend receives (camelCase). Fields are listed
 // explicitly, so a column added later is never exposed by accident (SF#4, SC#9).
 
@@ -10,7 +12,7 @@ function serializeOwnUser(user) {
     email: user.email,
     role: user.role,
     bio: user.bio ?? null,
-    profilePictureKey: user.profile_picture_key ?? null,
+    profilePictureUrl: storageService.urlFor(user.profile_picture_key),
     createdAt: user.created_at,
   };
 }

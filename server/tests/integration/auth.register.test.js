@@ -22,7 +22,7 @@ describe('POST /api/auth/register: success (FR#1, FR#2)', () => {
     const res = await register(validRegistration());
     expect(res.status).toBe(201);
     expect(Object.keys(res.body.user).sort()).toEqual(
-      ['bio', 'createdAt', 'email', 'id', 'profilePictureKey', 'role', 'username'].sort()
+      ['bio', 'createdAt', 'email', 'id', 'profilePictureUrl', 'role', 'username'].sort()
     );
     expect(res.body.user).toMatchObject({
       email: 'new.student@example.com',

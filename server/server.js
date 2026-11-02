@@ -30,6 +30,12 @@ async function start() {
   // Express 5 also calls a listen() callback when startup fails, so log on the real
   // 'listening' event instead.
   const server = app.listen(config.port);
+  // Slow-connection protection, and a keep-alive time longer than the 60 seconds most hosting
+  // load balancers use (shorter values cause random 502 errors behind them).
+  server.keepAliveTimeout = 65 * 1000;
+  server.headersTimeout = 66 * 1000;
+  server.requestTimeout = 120 * 1000; // must be at least headersTimeout; room for slow phone uploads
+
   server.on('listening', () => {
     logger.info({ port: config.port, env: config.nodeEnv }, 'Cub Critics API listening');
   });

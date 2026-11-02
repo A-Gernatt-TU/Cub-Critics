@@ -10,3 +10,8 @@ process.env.ALLOWED_ORIGINS = 'http://localhost:5173';
 // Test files that need other values set them again at the top of the file.
 process.env.ALLOWED_EMAIL_DOMAINS = '';
 process.env.TRUST_PROXY = '0';
+// Security features have their own test files that switch them on; everywhere else they
+// are off so unrelated tests are not affected by limits or redirects.
+process.env.RATE_LIMITS_ENABLED = 'false';
+process.env.FORCE_HTTPS = 'false';
+process.env.RATE_LIMIT_GLOBAL_PER_MINUTE = '600';
