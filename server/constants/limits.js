@@ -1,5 +1,23 @@
 // Shared limits taken from the SRS.
+const MINUTE = 60 * 1000;
+const HOUR = 60 * MINUTE;
+
+// Abuse limits (SC#6). They are per IP address, and campus Wi-Fi puts many students
+// behind ONE address, so they are deliberately generous: they stop scripts, not people.
+const RATE_LIMITS = Object.freeze({
+  // Only FAILED logins count. The per-account lockout (FR#6) handles targeted guessing;
+  // this stops one address trying many different accounts.
+  login: { windowMs: 15 * MINUTE, limit: 20 },
+  // Every attempt counts, including ones rejected as duplicates, which also slows down
+  // anyone probing which emails are registered.
+  register: { windowMs: HOUR, limit: 20 },
+  // Used by the review and report endpoints (per logged-in account AND per IP).
+  review: { windowMs: HOUR, perAccount: 30, perIp: 60 },
+  report: { windowMs: HOUR, perAccount: 20, perIp: 60 },
+});
+
 module.exports = Object.freeze({
+  RATE_LIMITS,
   PASSWORD_MIN_LENGTH: 8, // FR#3 (also needs a letter and a number)
   BIO_MAX_LENGTH: 250, // FR#12
   REVIEW_MAX_LENGTH: 1000, // FR#25

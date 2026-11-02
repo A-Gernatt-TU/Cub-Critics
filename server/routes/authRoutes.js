@@ -9,23 +9,20 @@ const { createHandler } = require('../utils/handler');
 const validate = require('../middleware/validate');
 const { registerSchema, loginSchema } = require('../validators/authSchemas');
 const authController = require('../controllers/authController');
+const { loginLimiter, registerLimiter } = require('../middleware/rateLimiters');
 
 const router = express.Router();
 
-// Account responses must never be cached by the browser or a proxy.
-router.use((req, res, next) => {
-  res.set('Cache-Control', 'no-store');
-  next();
-});
-
 router.post(
   '/register',
+  registerLimiter,
   validate({ body: registerSchema }),
   createHandler((req) => ({ body: req.validated.body, ip: req.ip }), authController.register)
 );
 
 router.post(
   '/login',
+  loginLimiter,
   validate({ body: loginSchema }),
   createHandler((req) => ({ body: req.validated.body, ip: req.ip }), authController.login)
 );

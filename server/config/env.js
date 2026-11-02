@@ -2,6 +2,7 @@
 // Reads and validates environment variables in one place (SC#8). If anything is
 // wrong the server refuses to start and lists every problem at once.
 require('dotenv').config({ quiet: true });
+const path = require('node:path');
 
 const VALID_ENVS = ['development', 'test', 'production'];
 const SAME_SITE_VALUES = ['lax', 'strict', 'none'];
@@ -111,6 +112,50 @@ function loadConfig(env = process.env) {
   // Change it whenever the sponsor approves new text (TBD-5).
   const tosVersion = env.TOS_VERSION || 'draft-1';
 
+  // ---- Abuse protection and transport security (SC#1, SC#6) ----
+  const rateLimitsEnabled = parseBoolean(env.RATE_LIMITS_ENABLED, !isTest);
+  if (rateLimitsEnabled === null) problems.push('RATE_LIMITS_ENABLED must be true or false');
+  if (isProduction && rateLimitsEnabled === false) {
+    problems.push('RATE_LIMITS_ENABLED must not be false in production (SC#6)');
+  }
+
+  // Requests per minute per IP address, across the whole API. Generous on purpose:
+  // many students share one campus network address.
+  const rateLimitGlobalPerMinute = Number(env.RATE_LIMIT_GLOBAL_PER_MINUTE || 600);
+  if (
+    !Number.isInteger(rateLimitGlobalPerMinute) ||
+    rateLimitGlobalPerMinute < 1 ||
+    rateLimitGlobalPerMinute > 100000
+  ) {
+    problems.push('RATE_LIMIT_GLOBAL_PER_MINUTE must be a whole number from 1 to 100000');
+  }
+
+  // Redirect plain-HTTP requests to HTTPS (SC#1). Some hosts already do this at their edge.
+  const forceHttps = parseBoolean(env.FORCE_HTTPS, isProduction);
+  if (forceHttps === null) problems.push('FORCE_HTTPS must be true or false');
+
+  // These two settings only work if the app can tell that the PROXY received HTTPS.
+  // Without TRUST_PROXY the server would see every request as plain HTTP, so it would
+  // redirect forever and never send the Secure cookie (nobody could log in).
+  if (isProduction && forceHttps === true && trustProxy < 1) {
+    problems.push(
+      'FORCE_HTTPS=true needs TRUST_PROXY=1 (the host terminates HTTPS and forwards the request)'
+    );
+  }
+  if (isProduction && cookieSecure === true && trustProxy < 1) {
+    problems.push(
+      'COOKIE_SECURE=true needs TRUST_PROXY=1 behind an HTTPS host, or the session cookie is never sent'
+    );
+  }
+
+  // ---- Image storage (SC#7, FR#60). Only local disk for now; the hosting choice (TBD-2)
+  // decides whether a cloud driver is added later.
+  const storageDriver = (env.STORAGE_DRIVER || 'local').toLowerCase();
+  if (storageDriver !== 'local') {
+    problems.push(`STORAGE_DRIVER "${storageDriver}" is not supported yet (only "local")`);
+  }
+  const uploadDir = path.resolve(env.UPLOAD_DIR || './uploads');
+
   // The database settings themselves are read by config/database.js.
   const hasDatabase = Boolean(env.DATABASE_URL) || Boolean(env.DB_NAME && env.DB_USER);
   if (!isTest && !hasDatabase) {
@@ -136,6 +181,11 @@ function loadConfig(env = process.env) {
     cookieSecure,
     cookieSameSite,
     bcryptRounds,
+    rateLimitsEnabled,
+    rateLimitGlobalPerMinute,
+    forceHttps,
+    storageDriver,
+    uploadDir,
     allowedEmailDomains,
     tosVersion,
     logLevel,
