@@ -2,13 +2,14 @@
 // Builds the Express app and exports it WITHOUT listening, so tests can import it.
 // server.js is what actually starts it.
 //
-// Added in later steps: sessions + auth (authentication step), rate limits and
-// upload checks (security step), feature routes (endpoints step).
+// Added in later steps: rate limits and upload checks (security step), feature routes
+// (endpoints step).
 const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
 const config = require('./config/env');
 const routes = require('./routes');
+const { sessionMiddleware } = require('./config/session');
 const requestLogger = require('./middleware/requestLogger');
 const { notFoundHandler, errorHandler } = require('./middleware/errorHandler');
 
@@ -37,6 +38,9 @@ app.use(
 // JSON only, with a small cap (image uploads use multer later, not this parser).
 // Note: with Express 5, req.body is undefined when a request has no body.
 app.use(express.json({ limit: '100kb' }));
+
+// Login sessions (SC#5, SC#12). Guests never receive a cookie.
+app.use(sessionMiddleware);
 
 app.use('/api', routes);
 

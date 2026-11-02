@@ -20,6 +20,31 @@ const {
   ServiceUnavailableError,
 } = require('../utils/httpExceptions');
 
+// Connection problems raised by the `pg` driver itself (the session store uses it
+// directly, outside Sequelize). Shown as the friendly 503 (CP#3), not a technical error.
+const PG_CONNECTION_CODES = new Set([
+  'ECONNREFUSED',
+  'ECONNRESET',
+  'ETIMEDOUT',
+  'ENOTFOUND',
+  'EHOSTUNREACH',
+  'EPIPE',
+  '57P01', // admin_shutdown
+  '57P02', // crash_shutdown
+  '57P03', // cannot_connect_now
+  '08000',
+  '08001',
+  '08003',
+  '08006',
+]);
+
+function isDatabaseConnectionError(err) {
+  if (PG_CONNECTION_CODES.has(err.code)) return true;
+  return /Connection terminated|timeout exceeded when trying to connect|Client has encountered a connection error/i.test(
+    err.message || ''
+  );
+}
+
 function notFoundHandler(req, res, next) {
   next(new NotFoundError('Resource not found'));
 }
@@ -48,7 +73,11 @@ function toHttpError(err) {
       err.errors.map((e) => ({ field: e.path, message: e.message }))
     );
   }
-  if (err instanceof ConnectionError || err instanceof TimeoutError) {
+  if (
+    err instanceof ConnectionError ||
+    err instanceof TimeoutError ||
+    isDatabaseConnectionError(err)
+  ) {
     return new ServiceUnavailableError();
   }
 

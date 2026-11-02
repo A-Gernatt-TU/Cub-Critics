@@ -11,6 +11,7 @@ try {
 
 const app = require('./app');
 const { sequelize } = require('./models');
+const { closeSessionStore } = require('./config/session');
 const logger = require('./utils/logger');
 
 const SHUTDOWN_TIMEOUT_MS = 10000;
@@ -55,6 +56,7 @@ async function start() {
 
     server.close(async () => {
       try {
+        await closeSessionStore();
         await sequelize.close();
       } catch (err) {
         logger.error({ err }, 'Error closing database connections');
