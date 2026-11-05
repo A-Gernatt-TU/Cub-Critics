@@ -1,7 +1,7 @@
 'use strict';
 // Student profiles (FR#11-FR#15): public pages, bio, and profile picture.
-const { sequelize, User, Review } = require('../models');
-const { PUBLIC_REVIEW_STATUSES, USER_STATUS } = require('../constants/statuses');
+const { sequelize, User, Review, Venue } = require('../models');
+const { PUBLIC_REVIEW_STATUSES, USER_STATUS, VENUE_STATUS } = require('../constants/statuses');
 const { Op } = require('sequelize');
 const achievementService = require('./achievementService');
 const storageService = require('./storageService');
@@ -17,7 +17,14 @@ async function getPublicProfile(userId) {
   if (!user || user.status !== USER_STATUS.ACTIVE) throw new NotFoundError('Profile not found');
 
   const [reviewCount, achievements] = await Promise.all([
-    Review.count({ where: { user_id: userId, status: { [Op.in]: PUBLIC_REVIEW_STATUSES } } }),
+    // Same rule as the profile's review list (reviewService.listReviewsByUser): reviews of
+    // deactivated venues are not shown, so they are not counted either.
+    Review.count({
+      where: { user_id: userId, status: { [Op.in]: PUBLIC_REVIEW_STATUSES } },
+      include: [
+        { model: Venue, as: 'venue', attributes: [], where: { status: VENUE_STATUS.ACTIVE } },
+      ],
+    }),
     achievementService.listForUser(userId),
   ]);
 
