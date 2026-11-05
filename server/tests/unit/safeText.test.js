@@ -14,6 +14,7 @@ describe('safeText (SC#4)', () => {
 
   test('says what is wrong in plain language', () => {
     expect(message(check(bio, undefined))).toBe('Bio is required');
+    expect(message(check(bio, null))).toBe('Bio is required');
     expect(message(check(bio, 42))).toBe('Bio must be text');
     expect(message(check(bio, 'x'.repeat(11)))).toBe('Bio must be 10 characters or fewer');
     expect(message(check(safeText('Name', { min: 3, max: 9 }), 'ab'))).toBe(

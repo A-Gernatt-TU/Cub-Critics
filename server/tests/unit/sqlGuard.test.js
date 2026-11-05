@@ -18,13 +18,29 @@ function sourceFiles(dir) {
 // Returns a description of each risky query call found in `source`.
 function findUnsafeQueries(source) {
   const problems = [];
+  const flagged = new Set(); // templates already reported, so each is reported once
   // query(`... ${value} ...`)  or  literal(`... ${value} ...`)
   for (const match of source.matchAll(/\.(?:query|literal)\(\s*`([^`]*)`/g)) {
-    if (match[1].includes('${')) problems.push(`interpolated template: ${match[1].slice(0, 60)}`);
+    if (match[1].includes('${')) {
+      flagged.add(match[1]);
+      problems.push(`interpolated template: ${match[1].slice(0, 60)}`);
+    }
   }
   // query('SELECT ...' + value)
   for (const match of source.matchAll(/\.(?:query|literal)\(\s*(['"])[^'"]*\1\s*\+/g)) {
     problems.push(`string concatenation: ${match[0].slice(0, 60)}`);
+  }
+  // Any backtick string that looks like SQL and has ${...} in it, wherever it is used. This
+  // also catches SQL assembled into a variable first and passed to query() later.
+  for (const match of source.matchAll(/`([^`]*)`/g)) {
+    const text = match[1];
+    if (flagged.has(text)) continue;
+    if (
+      text.includes('${') &&
+      /\b(SELECT\b.*\bFROM|INSERT\s+INTO|UPDATE\s+\w+\s+SET|DELETE\s+FROM)\b/is.test(text)
+    ) {
+      problems.push(`SQL-looking template with interpolation: ${text.slice(0, 60)}`);
+    }
   }
   return problems;
 }
@@ -39,6 +55,16 @@ describe('no SQL built from strings (SC#4)', () => {
     expect(
       findUnsafeQueries('sequelize.query(`SELECT 1 WHERE id = :id`, { replacements: { id } })')
     ).toHaveLength(0);
+    // SQL built into a variable first is caught too
+    expect(
+      findUnsafeQueries('const sql = `SELECT * FROM venues WHERE name = ${name}`; db.query(sql)')
+    ).toHaveLength(1);
+    expect(findUnsafeQueries('const sql = `DELETE FROM users WHERE id = ${id}`;')).toHaveLength(1);
+    // ordinary strings with ${} that are not SQL are fine
+    expect(
+      findUnsafeQueries('const message = `Hello ${name}, you selected a venue`;')
+    ).toHaveLength(0);
+    expect(findUnsafeQueries('const p = `%${text}%`;')).toHaveLength(0);
   });
 
   test('no application, migration or seeder file contains one', () => {
