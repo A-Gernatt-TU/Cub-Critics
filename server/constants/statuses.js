@@ -26,6 +26,16 @@ const REPORT_REASON = Object.freeze({
   OTHER: 'other',
 });
 
+// What the report form shows for each reason.
+const REPORT_REASON_LABELS = Object.freeze({
+  [REPORT_REASON.HARASSMENT]: 'Harassment',
+  [REPORT_REASON.HATE_SPEECH]: 'Hate speech',
+  [REPORT_REASON.THREATS]: 'Threats',
+  [REPORT_REASON.PERSONAL_INFO]: 'Personal information',
+  [REPORT_REASON.SPAM]: 'Spam',
+  [REPORT_REASON.OTHER]: 'Other',
+});
+
 const MODERATION_ACTION = Object.freeze({ APPROVE: 'approve', FLAG: 'flag', REMOVE: 'remove' });
 
 const values = (obj) => Object.values(obj);
@@ -37,6 +47,7 @@ module.exports = {
   PUBLIC_REVIEW_STATUSES,
   REPORT_STATUS,
   REPORT_REASON,
+  REPORT_REASON_LABELS,
   MODERATION_ACTION,
   values,
 };

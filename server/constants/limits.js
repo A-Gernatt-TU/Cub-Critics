@@ -14,6 +14,8 @@ const RATE_LIMITS = Object.freeze({
   // Used by the review and report endpoints (per logged-in account AND per IP).
   review: { windowMs: HOUR, perAccount: 30, perIp: 60 },
   report: { windowMs: HOUR, perAccount: 20, perIp: 60 },
+  // Profile pictures and venue photos.
+  upload: { windowMs: HOUR, perAccount: 20, perIp: 60 },
 });
 
 module.exports = Object.freeze({
@@ -21,6 +23,9 @@ module.exports = Object.freeze({
   PASSWORD_MIN_LENGTH: 8, // FR#3 (also needs a letter and a number)
   BIO_MAX_LENGTH: 250, // FR#12
   REVIEW_MAX_LENGTH: 1000, // FR#25
+  REPORT_COMMENT_MAX_LENGTH: 500,
+  MENU_MAX_ITEMS_PER_VENUE: 200,
+  VENUE_PHOTO_MAX_COUNT: 15, // per venue, so one account cannot fill the disk
   RATING_MIN: 1, // FR#24
   RATING_MAX: 5,
   PROFILE_PICTURE_MAX_BYTES: 2 * 1024 * 1024, // FR#13

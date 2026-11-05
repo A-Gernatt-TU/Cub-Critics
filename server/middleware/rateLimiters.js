@@ -89,7 +89,13 @@ const reportWriteLimiters = createWriteLimiters({
   message: 'You are sending reports too quickly. Please wait a while before trying again.',
 });
 
+const uploadLimiters = createWriteLimiters({
+  ...RATE_LIMITS.upload,
+  message: 'You are uploading too many images. Please wait a while before trying again.',
+});
+
 module.exports = {
+  uploadLimiters,
   buildLimiter,
   createWriteLimiters,
   globalLimiter,
